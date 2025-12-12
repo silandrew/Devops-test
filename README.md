@@ -24,7 +24,7 @@ az account set --subscription "<YOUR_SUBSCRIPTION_ID>"
 Verify selected subscription:
 az account show --output table
 REQUIRED:
-subscription_id        = "<YOUR_AZURE_SUBSCRIPTION_ID>"    # Your Azure subscription ID
+subscription_id        = "xxxxxx   xxxx      xxxxx xx"    # Your Azure subscription ID
  or run with terraform apply -auto-approve -var="subscription_id=xxxxxx-xxxxx-xxxx-xxxxxx"
 
 OPTIONAL (can be customized):
@@ -43,11 +43,11 @@ env:
   ACR_NAME: devopshomeworkdev                      # Must match terraform acr_name
 
 Note: These values are derived from Terraform outputs. Keep them consistent with terraform.tfvars.
-## Used OS
+# Used OS
 Name: Ubuntu WSL2
 Version: v22.04.3
 
-## Used tools
+# Used tools
 Name           Version
 terraform      v1.6.6
 azure-cli      v2.81.0
@@ -61,10 +61,8 @@ helm           v3.14.0
 2. Be sure you have all tools from the list above.
 3. Login to Azure CLI with an account that has Contributor permissions:
    az login
-4. Update your subscription ID in `terraform/environments/DEVOPS_env/terraform.tfvars`:
-  
-   subscription_id = "<YOUR_SUBSCRIPTION_ID>"
-  
+4. Update your subscription ID in `terraform/environments/DEVOPS_env/terraform.tfvars`:  
+   subscription_id = "<YOUR_SUBSCRIPTION_ID>"  
 5. cd to the terraform/environments/DEVOPS_env directory:
    cd terraform/environments/DEVOPS_env
 6. Run Terraform:
@@ -99,8 +97,7 @@ helm           v3.14.0
     - if subscriptionid is not in tfvarfile then run
     run with terraform destroy -auto-approve -var="subscription_id=xxxxxx-xxxxx-xxxx-xxxxxx"
 
-## Quick Reference - Script Execution Order
-
+# Script Execution Order
 Deploy:
 1. terraform init && terraform plan && terraform apply    # Create infrastructure
 2. ./docker_bp_kubeconfig.sh                              # Build image, push to ACR, get kubeconfig
@@ -108,9 +105,12 @@ Deploy:
 
 Destroy:
 1. ./k8s_delete.sh                                        # Remove app and clean ACR
-2. terraform destroy                                      # Remove infrastructure
+2. run terraform destroy if subscriptionid included in terraform.tfvar
+ or 
+ ```terraform destroy -auto-approve -var="subscription_id=xxxxxx-xxxxx-xxxx-xxxxxx```  -  if applied on cli             # Remove infrastructure
 
 # Project Structure
+```
 azure-aks-solution/
 ├── .github/
 │   └── workflows/
@@ -151,6 +151,7 @@ azure-aks-solution/
 ├── k8s_deploy.sh             # Deploy app using Helm
 ├── k8s_delete.sh             # Uninstall app using Helm
 └── README.md
+```
 
 # Architecture - Solution Workflow
 
@@ -168,8 +169,7 @@ App Pods (/metrics) -> ServiceMonitor -> Prometheus (kube-prometheus-stack) -> G
 
 Users -> Azure Load Balancer -> NGINX Ingress Controller -> ClusterIP Service -> App Pods (HPA scaled)
 
-## Architecture & Trade-off Reasoning
-
+# Architecture & Trade-off Reasoning
 Design Decisions:
 1. AKS over self-managed K8s: Reduces operational overhead, automatic upgrades, integrated Azure services
 2. Azure CNI over Kubenet: Better network performance, pods get VNet IPs, required for Network Policies
@@ -178,7 +178,6 @@ Design Decisions:
 5. kube-prometheus-stack: Production-ready monitoring, includes Prometheus Operator, Grafana, AlertManager
 6. NGINX Ingress over Azure App Gateway: Simpler setup, Kubernetes-native, cost-effective for dev/test
 7. HPA + Cluster Autoscaler: Pod-level scaling for responsiveness, node-level for capacity
-
 Trade-offs:
 - Standard_B2s VMs: Cost-effective but limited resources (acceptable for homework/dev)
 - Local Terraform state: Simple but not suitable for team collaboration (see improvements)
@@ -239,7 +238,6 @@ Stage:
 ## Setting Up GitHub Actions CI/CD
 ### Step 1: Create Azure Service Principal
 Run the following Azure CLI command:
-```bash
 az ad sp create-for-rbac --name "github-actions-sp" --role Contributor --scopes /subscriptions/<YOUR_SUBSCRIPTION_ID>
 output:
 json
@@ -249,7 +247,6 @@ json
   "password": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
   "tenant": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
 }
-
 
 ### Step 2: Format JSON for GitHub Secret
 Convert the output to this format for GitHub Actions:
@@ -376,7 +373,6 @@ Production Recommendations:
 - Implement mTLS with service mesh (Istio/Linkerd)
 
 # Potential Improvements and security consideration
-
 # 1. Terraform Remote State (High Priority)
 Current: Local state file (terraform.tfstate)
 Recommended: Azure Storage Account with state locking

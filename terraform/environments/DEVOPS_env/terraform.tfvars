@@ -4,7 +4,7 @@
 # Azure Subscription
 
 subscription_id = "48a00000-0000-0000-0000-c460c2e00c61"
-## terraform apply -auto-approve -var="subscription_id=xxxx-xxxx2xxx8a-xxxxf-xxxxxxx"
+
 
 
 # General Settings
