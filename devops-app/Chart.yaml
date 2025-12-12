@@ -1,0 +1,14 @@
+apiVersion: v2
+name: devops-app
+description: A Helm chart for the DevOps Challenge web application
+type: application
+version: 1.0.0
+appVersion: "1.0.0"
+keywords:
+  - devops
+  - go
+  - kubernetes
+  - microservice
+maintainers:
+  - name: DevOps Team
+    email: devops@example.com

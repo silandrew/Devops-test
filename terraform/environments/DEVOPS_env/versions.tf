@@ -1,0 +1,38 @@
+# =============================================================================
+# DEVOPS Environment - Terraform & Provider Versions
+# =============================================================================
+
+terraform {
+  required_version = ">= 1.6.0"
+
+  required_providers {
+    azurerm = {
+      source  = "hashicorp/azurerm"
+      version = "~> 4.0"
+    }
+    azuread = {
+      source  = "hashicorp/azuread"
+      version = "~> 3.0"
+    }
+    random = {
+      source  = "hashicorp/random"
+      version = "~> 3.6.0"
+    }
+    helm = {
+      source  = "hashicorp/helm"
+      version = "~> 2.12.0"
+    }
+    kubernetes = {
+      source  = "hashicorp/kubernetes"
+      version = "~> 2.25.0"
+    }
+  }
+
+  # Uncomment for remote state storage
+  # backend "azurerm" {
+  #   resource_group_name  = "terraform-state-rg"
+  #   storage_account_name = "tfstatedevops"
+  #   container_name       = "tfstate"
+  #   key                  = "devops-env.tfstate"
+  # }
+}

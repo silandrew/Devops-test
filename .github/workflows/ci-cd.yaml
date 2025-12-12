@@ -1,0 +1,146 @@
+# =============================================================================
+# GitHub Actions CI/CD Pipeline for Azure AKS
+# =============================================================================
+# This pipeline automates:
+# - Build the application container
+# - Push it to Azure Container Registry (ACR)
+# - Deploy the application to AKS cluster
+# =============================================================================
+
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [main]
+    paths-ignore:
+      - '*.md'
+      - 'docs/**'
+  pull_request:
+    branches: [main]
+  workflow_dispatch:  # Manual trigger
+
+env:
+  # Azure Configuration
+  AZURE_RESOURCE_GROUP: devopshomework-dev-rg
+  AKS_CLUSTER_NAME: devopshomework-dev-aks
+  ACR_NAME: devopshomeworkdev
+  
+  # Application Configuration
+  APP_NAME: devops-app
+  APP_NAMESPACE: devops
+  HELM_RELEASE_NAME: devops-app
+  HELM_VERSION: '3.14.0'
+
+jobs:
+  # ===========================================================================
+  # Stage 1: Build & Push Docker Image
+  # ===========================================================================
+  build:
+    name: Build & Push
+    runs-on: ubuntu-latest
+    outputs:
+      image-tag: ${{ steps.vars.outputs.sha_short }}
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set short SHA
+        id: vars
+        run: echo "sha_short=sha-$(echo ${{ github.sha }} | cut -c1-7)" >> $GITHUB_OUTPUT
+
+      - name: Azure Login
+        uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZZZURETEST }}
+
+      - name: Login to ACR
+        run: az acr login --name ${{ env.ACR_NAME }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.ACR_NAME }}.azurecr.io/${{ env.APP_NAME }}
+          tags: |
+            type=sha,prefix=sha-
+            type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' }}
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./app
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  # ===========================================================================
+  # Stage 2: Deploy to AKS
+  # ===========================================================================
+  deploy:
+    name: Deploy to AKS
+    runs-on: ubuntu-latest
+    needs: [build]
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Azure Login
+        uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZZZURETEST }}
+
+      - name: Get AKS credentials
+        run: |
+          az aks get-credentials \
+            --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
+            --name ${{ env.AKS_CLUSTER_NAME }} \
+            --overwrite-existing
+
+      - name: Setup Helm
+        uses: azure/setup-helm@v4
+        with:
+          version: ${{ env.HELM_VERSION }}
+
+      - name: Deploy with Helm
+        run: |
+          helm upgrade --install ${{ env.HELM_RELEASE_NAME }} ./devops-app \
+            --namespace ${{ env.APP_NAMESPACE }} \
+            --create-namespace \
+            --set image.repository=${{ env.ACR_NAME }}.azurecr.io/${{ env.APP_NAME }} \
+            --set image.tag=${{ needs.build.outputs.image-tag }} \
+            --set image.pullPolicy=Always \
+            --set podAnnotations.rollme="${{ github.sha }}" \
+            --wait \
+            --timeout=300s
+
+      - name: Verify deployment
+        run: |
+          kubectl rollout status deployment/${{ env.HELM_RELEASE_NAME }} -n ${{ env.APP_NAMESPACE }}
+          kubectl get pods -l app.kubernetes.io/name=${{ env.APP_NAME }} -n ${{ env.APP_NAMESPACE }}
+
+# =============================================================================
+# Required GitHub Secrets:
+# =============================================================================
+# AZURE_CREDENTIALS - Azure Service Principal credentials JSON:
+#   {
+#     "clientId": "<app-id>",
+#     "clientSecret": "<password>",
+#     "subscriptionId": "<subscription-id>",
+#     "tenantId": "<tenant-id>"
+#   }
+#
+# To create:
+#   az ad sp create-for-rbac --name "github-actions-sp" \
+#     --role contributor \
+#     --scopes /subscriptions/<subscription-id>/resourceGroups/checkout-dev-rg \
+#     --sdk-auth
+# =============================================================================
+

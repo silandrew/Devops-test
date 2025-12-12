@@ -1,0 +1,39 @@
+# =============================================================================
+# DEVOPS Environment - Provider Configuration
+# =============================================================================
+
+provider "azurerm" {
+  features {
+    resource_group {
+      prevent_deletion_if_contains_resources = false
+    }
+    key_vault {
+      purge_soft_delete_on_destroy    = true
+      recover_soft_deleted_key_vaults = true
+    }
+  }
+  
+  # Required for azurerm v4.x - specify subscription from variable
+  subscription_id = var.subscription_id
+  
+  # Automatically register required resource providers
+  resource_provider_registrations = "all"
+}
+
+provider "azuread" {}
+
+provider "helm" {
+  kubernetes {
+    host                   = try(module.aks.host, "")
+    client_certificate     = try(base64decode(module.aks.client_certificate), "")
+    client_key             = try(base64decode(module.aks.client_key), "")
+    cluster_ca_certificate = try(base64decode(module.aks.cluster_ca_certificate), "")
+  }
+}
+
+provider "kubernetes" {
+  host                   = try(module.aks.host, "")
+  client_certificate     = try(base64decode(module.aks.client_certificate), "")
+  client_key             = try(base64decode(module.aks.client_key), "")
+  cluster_ca_certificate = try(base64decode(module.aks.cluster_ca_certificate), "")
+}
