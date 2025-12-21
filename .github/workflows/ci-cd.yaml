@@ -117,7 +117,7 @@ jobs:
             --set image.repository=${{ env.ACR_NAME }}.azurecr.io/${{ env.APP_NAME }} \
             --set image.tag=${{ needs.build.outputs.image-tag }} \
             --set image.pullPolicy=Always \
-            --set podAnnotations.rollme="${{ github.sha }}" \
+            --set podAnnotations.rollme="${{ github.run_id }}-${{ github.run_attempt }}" \
             --wait \
             --timeout=300s
 
